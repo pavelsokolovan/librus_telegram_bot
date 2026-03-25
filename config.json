@@ -1,0 +1,59 @@
+{
+  "_readme": "Librus Telegram Bot — Configuration File. Copy this to config.json and fill in your values.",
+
+  "accounts": [
+    {
+      "_comment": "=== ACCOUNT 1 ===",
+      "_comment_creds": "All personal values loaded from .env: ACCOUNT_NAME1, LIBRUS_USERNAME1, LIBRUS_PASSWORD1, TELEGRAM_CHAT_IDS1",
+      "name": "",
+      "username": "",
+      "password": "",
+      "telegram_chat_ids": [],
+
+      "_comment_prompt": "Optional: custom AI prompt for THIS account. Overrides global report_prompt.",
+      "report_prompt": "",
+      "grades_new_days": 1
+    },
+    {
+      "_comment": "=== ACCOUNT 2 ===",
+      "_comment_creds": "All personal values loaded from .env: ACCOUNT_NAME2, LIBRUS_USERNAME2, LIBRUS_PASSWORD2, TELEGRAM_CHAT_IDS2",
+      "name": "",
+      "username": "",
+      "password": "",
+      "telegram_chat_ids": [],
+
+      "report_prompt": "",
+      "grades_new_days": 1
+    }
+  ],
+	
+  "telegram": {
+    "_comment": "bot_token is loaded from .env (TELEGRAM_BOT_TOKEN). Fallback: set it here.",
+    "bot_token": "",
+
+    "_comment_chat_ids": "Global fallback chat_ids used when account doesn't specify its own.",
+    "chat_ids": []
+  },
+
+  "claude": {
+    "_comment": "OPTIONAL. Leave api_key empty to use the built-in formatter (no AI, free).",
+    "_comment2": "Get API key from: https://console.anthropic.com",
+    "api_key": "",
+
+    "_comment_model": "Cheapest: claude-haiku-4-5-20251001 | Balanced: claude-sonnet-4-6 | Best: claude-opus-4-6",
+    "model": "claude-haiku-4-5-20251001",
+
+    "max_tokens": 1500
+  },
+
+  "_comment_prompt": "=== AI REPORT PROMPT ===",
+  "_comment_prompt2": "This controls HOW Claude writes the report. Edit freely.",
+  "_comment_prompt3": "Available data fields: account_name, date, today_lessons, homework, grades, averages, announcements, attendance, schedule_events",
+
+  "report_prompt": "Jesteś asystentem szkolnym. Piszesz codzienne podsumowanie danych z Librusa dla rodzica.\n\nZasady:\n- Pisz po polsku, przyjaźnie i zwięźle\n- Używaj formatowania Telegram Markdown: *pogrubienie*, _kursywa_, • punktor\n- Zawsze zaczynaj od imienia dziecka i daty\n- Wyróżniaj co pilne: zadania z terminem jutro/pojutrze, oceny niedostateczne, ważne ogłoszenia, nieprzeczytane wiadomości\n- Jeśli coś brakuje (brak zadań, brak ocen) napisz krótko że wszystko OK\n- Zakończ krótką uwagą lub motywacją\n\nKolejność sekcji:\n1. Nagłówek (imię dziecka + data)\n2. Plan lekcji na dziś\n3. Plan lekcji na jutro\n4. Terminarz (dziś do końca tygodnia, pole schedule_events) — pokaż każde wydarzenie z datą, przedmiotem i tytułem\n5. Zadania domowe (7 dni) — oznacz pilne!\n6. Ostatnie oceny\n7. Ogłoszenia (dziś)\n8. Wiadomości (dziś, pole messages) — wyróżnij nieprzeczytane\n9. Frekwencja\n10. Krótkie zakończenie",
+
+  "_comment_schedule": "Schedule is handled by Windows Task Scheduler (see README). No built-in scheduler needed.",
+
+  "_comment_log_level": "Logging verbosity: DEBUG (default, verbose) | INFO | WARNING | ERROR",
+  "log_level": "INFO"
+}

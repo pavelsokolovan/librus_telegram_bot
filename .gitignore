@@ -1,0 +1,40 @@
+# Secrets
+.env
+
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Logs
+logs/
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# VS Code
+.vscode/
+
+# PyCharm / JetBrains
+.idea/
+
+# Distribution / packaging
+*.whl
+*.tar.gz
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
