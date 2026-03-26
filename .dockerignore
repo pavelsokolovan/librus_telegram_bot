@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Secrets — never bake into the image; set via fly secrets set
+.env
+
+# Runtime logs (ephemeral on Fly.io anyway)
+logs/
+
+# Tests — not needed in production image
+tests/
+pytest.ini
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Windows-only scripts
+run_bot.bat
+setup_env.ps1
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
