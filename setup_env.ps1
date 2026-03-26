@@ -54,6 +54,36 @@ $lines.Add("# Telegram")
 $lines.Add("TELEGRAM_BOT_TOKEN=$botToken")
 $lines.Add("")
 
+# ── Webhook / Hosting (optional) ──────────────────────────────────────────────
+Write-Host ""
+Write-Host "-- Webhook / Cloud Hosting (optional) --" -ForegroundColor Yellow
+Write-Host "If you plan to host on Railway, Render, Fly.io, etc., enter your public HTTPS URL."
+Write-Host "Leave blank to use --once / Windows Task Scheduler mode instead."
+Write-Host ""
+$webhookUrl = Read-Host "  Public HTTPS URL (e.g. https://myapp.railway.app) or leave blank"
+
+if (-not [string]::IsNullOrWhiteSpace($webhookUrl)) {
+    $lines.Add("# Webhook server")
+    $lines.Add("WEBHOOK_URL=$webhookUrl")
+
+    $webhookSecret = Read-Host "  Webhook secret token (leave blank to skip, recommended for security)"
+    if (-not [string]::IsNullOrWhiteSpace($webhookSecret)) {
+        $lines.Add("WEBHOOK_SECRET=$webhookSecret")
+    }
+
+    $scheduleHour = Read-Host "  Hour for daily report, 0-23 (default: 7)"
+    if (-not [string]::IsNullOrWhiteSpace($scheduleHour)) {
+        $lines.Add("SCHEDULE_HOUR=$scheduleHour")
+    }
+
+    $scheduleMinute = Read-Host "  Minute for daily report, 0-59 (default: 0)"
+    if (-not [string]::IsNullOrWhiteSpace($scheduleMinute)) {
+        $lines.Add("SCHEDULE_MINUTE=$scheduleMinute")
+    }
+
+    $lines.Add("")
+}
+
 for ($i = 1; $i -le $accountCount; $i++) {
     Write-Host ""
     Write-Host "-- Account $i --" -ForegroundColor Yellow
@@ -108,5 +138,9 @@ Write-Host "Next steps:" -ForegroundColor Cyan
 Write-Host "  1. Activate venv:   venv\Scripts\activate"
 Write-Host "  2. Run diagnostics: python check.py"
 Write-Host "  3. Test report:     python librus_bot.py --test"
-Write-Host "  4. Send for real:   python librus_bot.py"
+if (-not [string]::IsNullOrWhiteSpace($webhookUrl)) {
+    Write-Host "  4. Start server:    python librus_bot.py"
+} else {
+    Write-Host "  4. Send for real:   python librus_bot.py --once"
+}
 Write-Host ""

@@ -87,6 +87,27 @@ if claude_key:
 else:
     print(f"\n✔ No Claude API key → using built-in formatter (free)")
 
+# Webhook / hosting check
+print(f"\n-- Webhook / Hosting --")
+webhook_url = os.environ.get("WEBHOOK_URL") or cfg.get("webhook", {}).get("url", "")
+port = os.environ.get("PORT") or cfg.get("webhook", {}).get("port", 8080)
+schedule_hour = os.environ.get("SCHEDULE_HOUR") or cfg.get("webhook", {}).get("schedule_hour", 7)
+schedule_minute = os.environ.get("SCHEDULE_MINUTE") or cfg.get("webhook", {}).get("schedule_minute", 0)
+
+if webhook_url:
+    print(f"✔ WEBHOOK_URL set → {webhook_url}")
+    print(f"  Telegram will push updates to: {webhook_url.rstrip('/')}/webhook")
+else:
+    print(f"ℹ No WEBHOOK_URL set — Telegram webhook will NOT be registered.")
+    print(f"  OK for --once / Windows Task Scheduler mode.")
+    print(f"  For cloud hosting: add WEBHOOK_URL=https://your-app.example.com to .env")
+
+print(f"✔ Server port: {port}  (override with PORT env var)")
+print(f"✔ Daily report scheduled at {int(schedule_hour):02d}:{int(schedule_minute):02d}  (override with SCHEDULE_HOUR/SCHEDULE_MINUTE)")
+
 print("\n" + "=" * 55)
-print("  All checks passed! Run: python librus_bot.py --test")
+print("  All checks passed!")
+print("  Test run:    python librus_bot.py --test")
+print("  One-shot:    python librus_bot.py --once")
+print("  Webhook srv: python librus_bot.py")
 print("=" * 55)

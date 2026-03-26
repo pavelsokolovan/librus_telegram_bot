@@ -52,7 +52,22 @@
 
   "report_prompt": "Jesteś asystentem szkolnym. Piszesz codzienne podsumowanie danych z Librusa dla rodzica.\n\nZasady:\n- Pisz po polsku, przyjaźnie i zwięźle\n- Używaj formatowania Telegram Markdown: *pogrubienie*, _kursywa_, • punktor\n- Zawsze zaczynaj od imienia dziecka i daty\n- Wyróżniaj co pilne: zadania z terminem jutro/pojutrze, oceny niedostateczne, ważne ogłoszenia, nieprzeczytane wiadomości\n- Jeśli coś brakuje (brak zadań, brak ocen) napisz krótko że wszystko OK\n- Zakończ krótką uwagą lub motywacją\n\nKolejność sekcji:\n1. Nagłówek (imię dziecka + data)\n2. Plan lekcji na dziś\n3. Plan lekcji na jutro\n4. Terminarz (dziś do końca tygodnia, pole schedule_events) — pokaż każde wydarzenie z datą, przedmiotem i tytułem\n5. Zadania domowe (7 dni) — oznacz pilne!\n6. Ostatnie oceny\n7. Ogłoszenia (dziś)\n8. Wiadomości (dziś, pole messages) — wyróżnij nieprzeczytane\n9. Frekwencja\n10. Krótkie zakończenie",
 
-  "_comment_schedule": "Schedule is handled by Windows Task Scheduler (see README). No built-in scheduler needed.",
+  "_comment_webhook": "=== WEBHOOK / HOSTING MODE ===",
+  "_comment_webhook2": "Set WEBHOOK_URL in .env to enable Telegram webhook registration and cloud hosting.",
+  "webhook": {
+    "_comment_url": "Public HTTPS URL of your hosted server (e.g. https://myapp.railway.app). Set via WEBHOOK_URL in .env.",
+    "url": "",
+
+    "_comment_port": "HTTP port for the web server. Most cloud platforms set this via the PORT env var automatically.",
+    "port": 8080,
+
+    "_comment_secret": "Optional secret token shared with Telegram to validate webhook requests. Set via WEBHOOK_SECRET in .env.",
+    "secret": "",
+
+    "_comment_schedule": "Time of day for the automatic daily report (24-hour clock). Override via SCHEDULE_HOUR / SCHEDULE_MINUTE in .env.",
+    "schedule_hour": 7,
+    "schedule_minute": 0
+  },
 
   "_comment_log_level": "Logging verbosity: DEBUG (default, verbose) | INFO | WARNING | ERROR",
   "log_level": "INFO"

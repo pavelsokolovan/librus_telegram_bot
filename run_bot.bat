@@ -13,6 +13,6 @@ echo [%DATE% %TIME%] Starting Librus Bot... >> logs\scheduler.log
 
 call "%BOT_DIR%venv\Scripts\activate.bat"
 
-python librus_bot.py >> logs\scheduler.log 2>&1
+python librus_bot.py --once >> logs\scheduler.log 2>&1
 
 echo [%DATE% %TIME%] Done. >> logs\scheduler.log

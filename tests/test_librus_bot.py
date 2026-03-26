@@ -1,5 +1,6 @@
 """Tests for the main librus_bot.py orchestration logic."""
 
+import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -99,3 +100,89 @@ class TestProcessAccount:
 
         await process_account({"name": "Kid"}, {"telegram": {"bot_token": "tok"}}, test_mode=True)
         mock_send.assert_not_awaited()
+
+
+class TestRunAllAccounts:
+    @pytest.mark.asyncio
+    @patch("librus_bot.process_account", new_callable=AsyncMock)
+    async def test_runs_all_accounts(self, mock_process):
+        from librus_bot import run_all_accounts
+
+        cfg = {"accounts": [{"name": "Anna"}, {"name": "Piotr"}]}
+        await run_all_accounts(cfg)
+
+        assert mock_process.await_count == 2
+
+    @pytest.mark.asyncio
+    @patch("librus_bot.process_account", new_callable=AsyncMock)
+    async def test_filter_by_name(self, mock_process):
+        from librus_bot import run_all_accounts
+
+        cfg = {"accounts": [{"name": "Anna"}, {"name": "Piotr"}]}
+        await run_all_accounts(cfg, filter_name="anna")
+
+        assert mock_process.await_count == 1
+        assert mock_process.await_args[0][0]["name"] == "Anna"
+
+    @pytest.mark.asyncio
+    @patch("librus_bot.process_account", new_callable=AsyncMock)
+    async def test_filter_no_match_skips_all(self, mock_process):
+        from librus_bot import run_all_accounts
+
+        cfg = {"accounts": [{"name": "Anna"}]}
+        await run_all_accounts(cfg, filter_name="nobody")
+
+        mock_process.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    @patch("librus_bot.process_account", new_callable=AsyncMock)
+    async def test_passes_cfg_to_each_account(self, mock_process):
+        from librus_bot import run_all_accounts
+
+        cfg = {"accounts": [{"name": "Anna"}], "telegram": {"bot_token": "tok"}}
+        await run_all_accounts(cfg)
+
+        mock_process.assert_awaited_once_with({"name": "Anna"}, cfg)
+
+
+class TestGetServerSettings:
+    def test_defaults(self):
+        from librus_bot import _get_server_settings
+
+        for key in ("WEBHOOK_URL", "PORT", "WEBHOOK_SECRET", "SCHEDULE_HOUR", "SCHEDULE_MINUTE"):
+            os.environ.pop(key, None)
+        settings = _get_server_settings({})
+        assert settings["port"] == 8080
+        assert settings["schedule_hour"] == 7
+        assert settings["schedule_minute"] == 0
+        assert settings["url"] == ""
+        assert settings["secret"] == ""
+
+    def test_env_overrides(self):
+        from librus_bot import _get_server_settings
+
+        env = {
+            "WEBHOOK_URL": "https://example.com",
+            "PORT": "9000",
+            "WEBHOOK_SECRET": "mysecret",
+            "SCHEDULE_HOUR": "8",
+            "SCHEDULE_MINUTE": "30",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            settings = _get_server_settings({})
+        assert settings["url"] == "https://example.com"
+        assert settings["port"] == 9000
+        assert settings["secret"] == "mysecret"
+        assert settings["schedule_hour"] == 8
+        assert settings["schedule_minute"] == 30
+
+    def test_config_json_fallback(self):
+        from librus_bot import _get_server_settings
+
+        cfg = {"webhook": {"url": "https://cfg.example.com", "port": 7000, "schedule_hour": 6}}
+        for key in ("WEBHOOK_URL", "PORT", "SCHEDULE_HOUR"):
+            os.environ.pop(key, None)
+        settings = _get_server_settings(cfg)
+        assert settings["url"] == "https://cfg.example.com"
+        assert settings["port"] == 7000
+        assert settings["schedule_hour"] == 6
