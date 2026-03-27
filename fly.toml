@@ -1,47 +1,23 @@
-# fly.toml — Fly.io deployment configuration for the Librus Telegram Bot
+# fly.toml app configuration file generated for librus-telegram-bot on 2026-03-27T21:54:06Z
 #
-# 1. Install flyctl: https://fly.io/docs/hands-on/install-flyctl/
-# 2. Login: fly auth login
-# 3. Create app (first time only): fly apps create librus-telegram-bot
-# 4. Set secrets (replace values with your own):
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
-#   fly secrets set TELEGRAM_BOT_TOKEN=your_token_here
-#   fly secrets set LIBRUS_USERNAME1=your_librus_login
-#   fly secrets set LIBRUS_PASSWORD1=your_librus_password
-#   fly secrets set ACCOUNT_NAME1="Jan Kowalski"
-#   fly secrets set TELEGRAM_CHAT_IDS1=123456789
-#   fly secrets set WEBHOOK_URL=https://librus-telegram-bot.fly.dev
-#   fly secrets set WEBHOOK_SECRET=your_random_secret   # optional but recommended
-#
-#   For additional accounts repeat with suffix 2, 3, etc.
-#
-# 5. Deploy: fly deploy
 
 app = 'librus-telegram-bot'
-primary_region = 'waw'
+primary_region = 'ams'
 
 [build]
-  dockerfile = 'Dockerfile'
-
-[env]
-  PORT = '8080'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  # Keep the machine always running so APScheduler delivers daily reports on time.
-  auto_stop_machines = 'off'
+  auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 1
-
-  [[http_service.checks]]
-    grace_period = '15s'
-    interval = '30s'
-    method = 'GET'
-    path = '/health'
-    timeout = '5s'
+  min_machines_running = 0
+  processes = ['app']
 
 [[vm]]
-  memory = '256mb'
+  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 256
