@@ -1,4 +1,4 @@
-librus-apix
+librus-apix==1.4.0
 python-telegram-bot
 python-dotenv
 aiohttp

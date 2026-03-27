@@ -2,9 +2,75 @@
 
 import logging
 import traceback
+from collections import defaultdict
 from datetime import date, timedelta
 
 log = logging.getLogger(__name__)
+
+
+# ── Monkey-patch for librus_apix.grades._extract_grades_numeric ────────────────
+# Upstream bug: `len(average_grades) >= semester_number` should be `>`.
+# When td.right returns no elements, semester_number=0 passes the check and
+# average_grades[0] raises IndexError.  We replace the function with a fixed copy.
+
+def _apply_grades_fix():
+    from bs4 import Tag
+    import librus_apix.grades as _mod
+    from librus_apix.grades import Grade, Gpa, _handle_subject, _extract_grade_info
+
+    def _extract_grades_numeric_fixed(table_rows):
+        sem_grades = [defaultdict(list) for _ in range(2)]
+        avg_grades = defaultdict(list)
+
+        for box in table_rows:
+            if box.select_one("td[class='center micro screen-only']") is None:
+                continue
+            semester_grades = box.select('td[class!="center micro screen-only"]')
+            if len(semester_grades) < 9:
+                continue
+            average_grades = list(map(lambda x: x.text, box.select("td.right")))
+            semesters = [semester_grades[1:4], semester_grades[4:7]]
+            subject = _handle_subject(semester_grades)
+            for semester_number, semester in enumerate(semesters):
+                if subject not in sem_grades[semester_number]:
+                    sem_grades[semester_number][subject] = []
+                for sg in semester:
+                    grade_a_improved = sg.select(
+                        "td[class!='center'] > span > span.grade-box > a"
+                    )
+                    grade_a = (
+                        sg.select("td[class!='center'] > span.grade-box > a")
+                        + grade_a_improved
+                    )
+                    for a in grade_a:
+                        (
+                            _grade, _date, _href, desc, counts,
+                            category, teacher, weight,
+                        ) = _extract_grade_info(a, subject)
+                        g = Grade(
+                            subject, _grade, counts, _date,
+                            a.attrs.get("href", ""), desc,
+                            semester_number + 1, category, teacher, weight,
+                        )
+                        sem_grades[semester_number][subject].append(g)
+                # FIX: changed >= to > to prevent IndexError on empty list
+                avg_gr = (
+                    average_grades[semester_number]
+                    if len(average_grades) > semester_number
+                    else 0.0
+                )
+                gpa = Gpa(semester_number + 1, avg_gr, subject)
+                avg_grades[subject].append(gpa)
+            avg_gr = (
+                average_grades[-1] if len(average_grades) > 0 else 0.0
+            )
+            avg_grades[subject].append(Gpa(0, avg_gr, subject))
+
+        return sem_grades, avg_grades
+
+    _mod._extract_grades_numeric = _extract_grades_numeric_fixed
+
+_apply_grades_fix()
 
 
 def _safe_attr(obj, name, default=""):
@@ -76,8 +142,9 @@ def fetch_grades(client, name: str, grades_new_days: int = 3) -> dict:
         result = get_grades(client)
         log.debug(f"[{name}]  grades raw result type: {type(result)}, len: {len(result) if result else 0}")
 
+        # get_grades returns (sem_grades, avg_grades, descriptive_grades) — 3-tuple
         grades_semesters = result[0] if result and len(result) > 0 else []
-        averages = result[1] if result and len(result) > 1 else {}
+        averages_raw = result[1] if result and len(result) > 1 else {}
 
         grades_list = []
         if isinstance(grades_semesters, list):
@@ -100,10 +167,17 @@ def fetch_grades(client, name: str, grades_new_days: int = 3) -> dict:
 
         grades_list.sort(key=lambda x: x["date"], reverse=True)
 
+        # averages_raw is DefaultDict[str, List[Gpa]] — pick the latest semester gpa per subject
+        averages = {}
+        for subject, gpa_list in (averages_raw or {}).items():
+            if gpa_list:
+                best = max(gpa_list, key=lambda g: g.semester)
+                averages[subject] = str(best.gpa)
+
         cutoff = (date.today() - timedelta(days=grades_new_days)).isoformat()
         recent = [g for g in grades_list if g["date"] >= cutoff]
 
-        data: dict = {"averages": {k: str(v) for k, v in (averages or {}).items()}}
+        data: dict = {"averages": averages}
         if recent:
             log.info(f"[{name}]  grades: {len(recent)} new in last {grades_new_days} days (of {len(grades_list)} total)")
             data["grades"] = recent
