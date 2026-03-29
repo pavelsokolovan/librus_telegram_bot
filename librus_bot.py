@@ -14,8 +14,8 @@ Webhook server environment variables (.env):
     WEBHOOK_URL      public HTTPS URL of this server (e.g. https://myapp.railway.app)
     PORT             HTTP port to listen on (default: 8080)
     WEBHOOK_SECRET   secret token used to validate incoming Telegram updates
-    SCHEDULE_HOUR    hour for the daily report (default: 7)
-    SCHEDULE_MINUTE  minute for the daily report (default: 0)
+    SCHEDULE_HOUR    hour for the daily report (optional — omit to disable scheduled reports)
+    SCHEDULE_MINUTE  minute for the daily report (optional, default: 0 when SCHEDULE_HOUR is set)
 """
 
 import asyncio
@@ -109,8 +109,8 @@ def _get_server_settings(cfg: dict) -> dict:
         "url": os.environ.get("WEBHOOK_URL") or wh.get("url", ""),
         "port": int(os.environ.get("PORT") or wh.get("port", 8080)),
         "secret": os.environ.get("WEBHOOK_SECRET") or wh.get("secret", ""),
-        "schedule_hour": int(os.environ.get("SCHEDULE_HOUR") or wh.get("schedule_hour", 7)),
-        "schedule_minute": int(os.environ.get("SCHEDULE_MINUTE") or wh.get("schedule_minute", 0)),
+        "schedule_hour": int(os.environ["SCHEDULE_HOUR"]) if os.environ.get("SCHEDULE_HOUR") is not None else (int(wh["schedule_hour"]) if "schedule_hour" in wh else None),
+        "schedule_minute": int(os.environ["SCHEDULE_MINUTE"]) if os.environ.get("SCHEDULE_MINUTE") is not None else (int(wh["schedule_minute"]) if "schedule_minute" in wh else None),
     }
 
 
@@ -191,18 +191,21 @@ async def start_webhook_server(cfg: dict):
         else:
             log.warning("WEBHOOK_URL not set — Telegram webhook NOT registered. Bot won't receive /run commands.")
 
-        scheduler.add_job(
-            run_all_accounts,
-            "cron",
-            args=[cfg],
-            hour=settings["schedule_hour"],
-            minute=settings["schedule_minute"],
-        )
-        scheduler.start()
-        log.info(
-            f"Scheduler started — daily reports at "
-            f"{settings['schedule_hour']:02d}:{settings['schedule_minute']:02d}"
-        )
+        if settings["schedule_hour"] is not None:
+            scheduler.add_job(
+                run_all_accounts,
+                "cron",
+                args=[cfg],
+                hour=settings["schedule_hour"],
+                minute=settings["schedule_minute"] or 0,
+            )
+            scheduler.start()
+            log.info(
+                f"Scheduler started — daily reports at "
+                f"{settings['schedule_hour']:02d}:{(settings['schedule_minute'] or 0):02d}"
+            )
+        else:
+            log.info("Scheduler disabled — SCHEDULE_HOUR not set. Use /run or POST /trigger to send reports.")
 
     async def on_cleanup(app: web.Application):
         scheduler.shutdown(wait=False)

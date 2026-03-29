@@ -161,8 +161,8 @@ When running in server mode, add the following to `config.json` → `"webhook"` 
 | `url` | `WEBHOOK_URL` | *(empty)* | Public HTTPS URL of your server |
 | `port` | `PORT` | `8080` | HTTP port (cloud platforms set this automatically) |
 | `secret` | `WEBHOOK_SECRET` | *(empty)* | Secret token for validating Telegram requests (recommended) |
-| `schedule_hour` | `SCHEDULE_HOUR` | `7` | Hour for the daily report (0–23) |
-| `schedule_minute` | `SCHEDULE_MINUTE` | `0` | Minute for the daily report (0–59) |
+| `schedule_hour` | `SCHEDULE_HOUR` | *(none — scheduler disabled)* | Hour for the daily report (0–23); omit to disable scheduled reports |
+| `schedule_minute` | `SCHEDULE_MINUTE` | `0` (when hour is set) | Minute for the daily report (0–59) |
 
 ### 4d. Report Prompt (optional but recommended)
 
@@ -237,8 +237,8 @@ This is the recommended mode for always-on hosting on platforms like **Railway, 
 
 1. The bot starts a web server on `PORT` (default: 8080).
 2. On startup it registers your `WEBHOOK_URL/webhook` with Telegram.
-3. APScheduler sends the daily report at `SCHEDULE_HOUR:SCHEDULE_MINUTE`.
-4. You can also trigger reports on demand by messaging the bot.
+3. If `SCHEDULE_HOUR` is set, APScheduler sends the daily report at `SCHEDULE_HOUR:SCHEDULE_MINUTE`. If not set, scheduled reports are disabled.
+4. You can always trigger reports on demand by messaging the bot or calling `POST /trigger`.
 
 ### Deploy to Railway (example)
 
@@ -250,8 +250,9 @@ This is the recommended mode for always-on hosting on platforms like **Railway, 
    TELEGRAM_BOT_TOKEN=...
    WEBHOOK_URL=https://<your-railway-app>.up.railway.app
    WEBHOOK_SECRET=<random string>
-   SCHEDULE_HOUR=7
-   SCHEDULE_MINUTE=0
+   # Optional — omit to disable scheduled reports:
+   # SCHEDULE_HOUR=7
+   # SCHEDULE_MINUTE=0
    ACCOUNT_NAME1=...
    LIBRUS_USERNAME1=...
    LIBRUS_PASSWORD1=...
