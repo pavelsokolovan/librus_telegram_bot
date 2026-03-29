@@ -138,7 +138,7 @@ class TestFetchGrades:
         today = date(2026, 3, 25)
         mock_get.return_value = (
             [{"Matematyka": [self._grade("Matematyka", "5", "2026-03-25")]}],
-            {"Matematyka": 4.5},
+            {"Matematyka": [SimpleNamespace(semester=1, gpa=4.5)]},
         )
         with patch("src.fetchers.date") as mock_date:
             mock_date.today.return_value = today

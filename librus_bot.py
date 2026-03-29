@@ -38,7 +38,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-from src.config import load_config, resolve_chat_ids
+from src.config import load_config, resolve_chat_ids, get_allowed_chat_ids
 from src.fetchers import fetch_all
 from src.formatters import generate_report_with_claude, format_report_fallback
 from src.telegram_sender import send_message
@@ -145,6 +145,12 @@ async def start_webhook_server(cfg: dict):
         if message and message.text:
             text = message.text.strip()
             chat_id = str(message.chat_id)
+
+            allowed_ids = get_allowed_chat_ids(cfg)
+            if allowed_ids and chat_id not in allowed_ids:
+                log.warning(f"Unauthorized access attempt from chat_id={chat_id} — ignoring")
+                return web.Response()
+
             if text.startswith("/run"):
                 parts = text.split(maxsplit=1)
                 fname = parts[1] if len(parts) > 1 else None

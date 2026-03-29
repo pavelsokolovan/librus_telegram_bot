@@ -73,3 +73,25 @@ def resolve_chat_ids(account_cfg: dict, global_cfg: dict) -> list[str]:
         if single:
             chat_ids = [single]
     return [str(cid) for cid in chat_ids]
+
+
+def get_allowed_chat_ids(cfg: dict) -> set[str]:
+    """Return the set of all chat IDs that are allowed to interact with the bot.
+
+    Combines every per-account TELEGRAM_CHAT_IDS* value and the global
+    telegram.chat_ids fallback so a single authoritative allowlist is used
+    for command gating in the webhook handler.
+    """
+    allowed: set[str] = set()
+    for account in cfg.get("accounts", []):
+        for cid in account.get("telegram_chat_ids", []):
+            allowed.add(str(cid))
+        single = account.get("telegram_chat_id")
+        if single:
+            allowed.add(str(single))
+    for cid in cfg.get("telegram", {}).get("chat_ids", []):
+        allowed.add(str(cid))
+    single_global = cfg.get("telegram", {}).get("chat_id")
+    if single_global:
+        allowed.add(str(single_global))
+    return allowed

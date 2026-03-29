@@ -13,19 +13,30 @@ class TestLoadConfig:
         "telegram": {"bot_token": "tok123"},
     }
 
+    # All env keys that load_config reads — cleared for every test to prevent
+    # real .env values leaking into mocked runs.
+    _CLEAN_ENV = {
+        "ACCOUNT_NAME1": "", "ACCOUNT_NAME2": "",
+        "LIBRUS_USERNAME1": "", "LIBRUS_PASSWORD1": "",
+        "LIBRUS_USERNAME2": "", "LIBRUS_PASSWORD2": "",
+        "TELEGRAM_CHAT_IDS1": "", "TELEGRAM_CHAT_IDS2": "",
+        "TELEGRAM_BOT_TOKEN": "",
+    }
+
     def _patch_config(self, cfg_dict, env_vars=None):
         """Return a context-manager stack that fakes config.json + env vars."""
         import src.config as mod
 
         json_str = json.dumps(cfg_dict)
+        # Start from a clean env (no real .env leakage), then apply test overrides.
+        merged_env = {**self._CLEAN_ENV, **(env_vars or {})}
         patches = [
             patch.object(mod, "CONFIG_PATH", new=Path("fake/config.json")),
             patch("src.config._load_env"),
             patch("builtins.open", mock_open(read_data=json_str)),
             patch.object(Path, "exists", return_value=True),
+            patch.dict(os.environ, merged_env, clear=False),
         ]
-        if env_vars:
-            patches.append(patch.dict(os.environ, env_vars, clear=False))
         return patches
 
     def _run(self, cfg_dict, env_vars=None):
@@ -123,3 +134,52 @@ class TestResolveChatIds:
         from src.config import resolve_chat_ids
         result = resolve_chat_ids({}, {"telegram": {}})
         assert result == []
+
+
+# ── get_allowed_chat_ids ───────────────────────────────────────────────────────
+
+class TestGetAllowedChatIds:
+    def test_collects_all_account_chat_ids(self):
+        from src.config import get_allowed_chat_ids
+        cfg = {
+            "accounts": [
+                {"telegram_chat_ids": ["111", "222"]},
+                {"telegram_chat_ids": ["333"]},
+            ],
+            "telegram": {},
+        }
+        assert get_allowed_chat_ids(cfg) == {"111", "222", "333"}
+
+    def test_includes_global_chat_ids(self):
+        from src.config import get_allowed_chat_ids
+        cfg = {
+            "accounts": [{"telegram_chat_ids": ["10"]}],
+            "telegram": {"chat_ids": ["20", "30"]},
+        }
+        assert get_allowed_chat_ids(cfg) == {"10", "20", "30"}
+
+    def test_includes_single_account_chat_id(self):
+        from src.config import get_allowed_chat_ids
+        cfg = {
+            "accounts": [{"telegram_chat_id": 42}],
+            "telegram": {},
+        }
+        assert get_allowed_chat_ids(cfg) == {"42"}
+
+    def test_includes_single_global_chat_id(self):
+        from src.config import get_allowed_chat_ids
+        cfg = {"accounts": [], "telegram": {"chat_id": 99}}
+        assert get_allowed_chat_ids(cfg) == {"99"}
+
+    def test_empty_when_nothing_configured(self):
+        from src.config import get_allowed_chat_ids
+        cfg = {"accounts": [], "telegram": {}}
+        assert get_allowed_chat_ids(cfg) == set()
+
+    def test_deduplicates_ids(self):
+        from src.config import get_allowed_chat_ids
+        cfg = {
+            "accounts": [{"telegram_chat_ids": ["5"]}],
+            "telegram": {"chat_ids": ["5", "6"]},
+        }
+        assert get_allowed_chat_ids(cfg) == {"5", "6"}

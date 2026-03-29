@@ -153,8 +153,8 @@ class TestGetServerSettings:
             os.environ.pop(key, None)
         settings = _get_server_settings({})
         assert settings["port"] == 8080
-        assert settings["schedule_hour"] == 7
-        assert settings["schedule_minute"] == 0
+        assert settings["schedule_hour"] is None
+        assert settings["schedule_minute"] is None
         assert settings["url"] == ""
         assert settings["secret"] == ""
 
