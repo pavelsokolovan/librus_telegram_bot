@@ -149,6 +149,15 @@ async def start_webhook_server(cfg: dict):
             allowed_ids = get_allowed_chat_ids(cfg)
             if allowed_ids and chat_id not in allowed_ids:
                 log.warning(f"Unauthorized access attempt from chat_id={chat_id} — ignoring")
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text=(
+                        "⛔ *Access denied.*\n\n"
+                        "Your chat ID is not authorised to use this bot.\n"
+                        f"Ask the owner to add `{chat_id}` to the allowed list."
+                    ),
+                    parse_mode="Markdown",
+                )
                 return web.Response()
 
             if text.startswith("/run"):
@@ -162,8 +171,8 @@ async def start_webhook_server(cfg: dict):
                 )
                 await bot.send_message(chat_id=chat_id, text=reply, parse_mode="Markdown")
             elif text.startswith("/status"):
-                names = ", ".join(a["name"] for a in cfg["accounts"])
-                await bot.send_message(chat_id=chat_id, text=f"✅ Bot is running.\nAccounts: {names}")
+                count = len(cfg["accounts"])
+                await bot.send_message(chat_id=chat_id, text=f"✅ Bot is running.\nMonitoring {count} account(s).")
             elif text.startswith("/help"):
                 help_text = (
                     "*Librus Bot commands:*\n"

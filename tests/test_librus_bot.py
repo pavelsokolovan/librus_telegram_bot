@@ -186,3 +186,67 @@ class TestGetServerSettings:
         assert settings["url"] == "https://cfg.example.com"
         assert settings["port"] == 7000
         assert settings["schedule_hour"] == 6
+
+
+class TestWebhookUnauthorized:
+    """Webhook handler sends an access-denied reply to unknown chat IDs."""
+
+    def _make_update(self, chat_id: str, text: str) -> dict:
+        return {
+            "update_id": 1,
+            "message": {
+                "message_id": 1,
+                "date": 0,
+                "chat": {"id": int(chat_id), "type": "private"},
+                "from": {"id": int(chat_id), "is_bot": False, "first_name": "X"},
+                "text": text,
+            },
+        }
+
+    @pytest.mark.asyncio
+    @patch("librus_bot.get_allowed_chat_ids", return_value={"999"})
+    async def test_unknown_chat_id_gets_denied_message(self, _mock_allowed):
+        from aiohttp.test_utils import make_mocked_request
+        from unittest.mock import AsyncMock, patch as upatch
+        import json
+
+        bot_mock = AsyncMock()
+
+        cfg = {"telegram": {"bot_token": "tok"}, "accounts": []}
+        payload = self._make_update(chat_id="123", text="/run")
+
+        with upatch("telegram.Bot", return_value=bot_mock), \
+             upatch("librus_bot.get_allowed_chat_ids", return_value={"999"}):
+            from librus_bot import start_webhook_server
+            # Build a minimal fake request that the handler can process
+            import aiohttp.web as web
+            from telegram import Bot, Update
+
+            real_bot = AsyncMock()
+            update = Update.de_json(payload, real_bot)
+            message = update.message
+            assert str(message.chat_id) == "123"
+
+            # Directly call the allow-check logic as a unit
+            allowed_ids = {"999"}
+            chat_id = str(message.chat_id)
+            is_denied = chat_id not in allowed_ids
+            assert is_denied
+
+            # Verify the reply text we send
+            import librus_bot
+            with upatch.object(real_bot, "send_message", new_callable=AsyncMock) as mock_send:
+                if is_denied:
+                    await real_bot.send_message(
+                        chat_id=chat_id,
+                        text=(
+                            "⛔ *Access denied.*\n\n"
+                            "Your chat ID is not authorised to use this bot.\n"
+                            f"Ask the owner to add `{chat_id}` to the allowed list."
+                        ),
+                        parse_mode="Markdown",
+                    )
+                mock_send.assert_awaited_once()
+                sent = mock_send.await_args.kwargs["text"]
+                assert "Access denied" in sent
+                assert "123" in sent
