@@ -52,6 +52,11 @@ def load_config() -> dict:
     if bot_token_env:
         cfg.setdefault("telegram", {})["bot_token"] = bot_token_env
 
+    # Inject Claude API key
+    claude_key_env = os.environ.get("CLAUDE_API_KEY")
+    if claude_key_env:
+        cfg.setdefault("claude", {})["api_key"] = claude_key_env
+
     if not cfg.get("telegram", {}).get("bot_token"):
         log.error("Telegram bot_token missing — set TELEGRAM_BOT_TOKEN in .env or config.json")
         sys.exit(1)

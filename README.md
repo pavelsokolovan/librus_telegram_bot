@@ -95,6 +95,9 @@ LIBRUS_USERNAME2=7654321
 LIBRUS_PASSWORD2=otherpassword
 TELEGRAM_CHAT_IDS2=987654321
 
+# ── Claude AI (optional) ─────────────────────────────────────────────────────
+# CLAUDE_API_KEY=sk-ant-api03-...
+
 # ── Webhook / cloud hosting (only needed for server mode) ─────────────────────
 # WEBHOOK_URL=https://myapp.railway.app
 # WEBHOOK_SECRET=some-random-secret-string
@@ -188,6 +191,14 @@ You can also set a **different prompt per account** by adding `"report_prompt"` 
 Without an API key the bot works for free using the built-in formatter.
 With a key — reports are smarter and better formatted.
 
+Set the key in `.env` (recommended — keeps secrets out of `config.json`):
+
+```env
+CLAUDE_API_KEY=sk-ant-api03-...
+```
+
+Or directly in `config.json`:
+
 ```json
 "claude": {
   "api_key": "sk-ant-api03-...",
@@ -195,6 +206,8 @@ With a key — reports are smarter and better formatted.
   "max_tokens": 1500
 }
 ```
+
+> `CLAUDE_API_KEY` in `.env` takes priority over `api_key` in `config.json`.
 
 | Model | Cost | Quality |
 |-------|------|---------|
@@ -465,6 +478,9 @@ ACCOUNT_NAME2=Piotr Kowalski
 LIBRUS_USERNAME2=7654321
 LIBRUS_PASSWORD2=otherpassword
 TELEGRAM_CHAT_IDS2=987654321
+
+# ── Claude AI (optional) ─────────────────────────────────────────────────────
+# CLAUDE_API_KEY=sk-ant-api03-...
 ```
 
 > 💡 **Getting your Telegram Chat ID:** Message **@userinfobot** on Telegram — it replies with your numeric ID.
@@ -543,6 +559,14 @@ You can also set a **different prompt per account** by adding `"report_prompt"` 
 Without an API key the bot works for free using the built-in formatter.
 With a key — reports are smarter and better formatted.
 
+Set the key in `.env` (recommended — keeps secrets out of `config.json`):
+
+```env
+CLAUDE_API_KEY=sk-ant-api03-...
+```
+
+Or directly in `config.json`:
+
 ```json
 "claude": {
   "api_key": "sk-ant-api03-...",
@@ -550,6 +574,8 @@ With a key — reports are smarter and better formatted.
   "max_tokens": 1500
 }
 ```
+
+> `CLAUDE_API_KEY` in `.env` takes priority over `api_key` in `config.json`.
 
 | Model | Cost | Quality |
 |-------|------|---------|

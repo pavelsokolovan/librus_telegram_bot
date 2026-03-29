@@ -21,6 +21,7 @@ class TestLoadConfig:
         "LIBRUS_USERNAME2": "", "LIBRUS_PASSWORD2": "",
         "TELEGRAM_CHAT_IDS1": "", "TELEGRAM_CHAT_IDS2": "",
         "TELEGRAM_BOT_TOKEN": "",
+        "CLAUDE_API_KEY": "",
     }
 
     def _patch_config(self, cfg_dict, env_vars=None):
@@ -74,6 +75,15 @@ class TestLoadConfig:
     def test_env_overrides_bot_token(self):
         result = self._run(self.MINIMAL_CFG, {"TELEGRAM_BOT_TOKEN": "env_token"})
         assert result["telegram"]["bot_token"] == "env_token"
+
+    def test_env_overrides_claude_api_key(self):
+        result = self._run(self.MINIMAL_CFG, {"CLAUDE_API_KEY": "sk-ant-test"})
+        assert result["claude"]["api_key"] == "sk-ant-test"
+
+    def test_env_claude_api_key_overrides_config(self):
+        cfg = {**self.MINIMAL_CFG, "claude": {"api_key": "from-config"}}
+        result = self._run(cfg, {"CLAUDE_API_KEY": "from-env"})
+        assert result["claude"]["api_key"] == "from-env"
 
     def test_exits_when_no_accounts(self):
         with pytest.raises(SystemExit):
