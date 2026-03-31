@@ -64,9 +64,10 @@
     "_comment_secret": "Optional secret token shared with Telegram to validate webhook requests. Set via WEBHOOK_SECRET in .env.",
     "secret": "",
 
-    "_comment_schedule": "Time of day for the automatic daily report (24-hour clock). Override via SCHEDULE_HOUR / SCHEDULE_MINUTE in .env.",
-    "schedule_hour": 7,
-    "schedule_minute": 0
+    "_comment_schedule": "Time of day for the automatic daily report (24-hour clock). Override via SCHEDULE_HOUR / SCHEDULE_MINUTE / SCHEDULE_TIMEZONE in .env.",
+    "schedule_hour": null,
+    "schedule_minute": null,
+    "schedule_timezone": "Europe/Warsaw"
   },
 
   "_comment_log_level": "Logging verbosity: DEBUG (default, verbose) | INFO | WARNING | ERROR",

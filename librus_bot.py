@@ -109,8 +109,9 @@ def _get_server_settings(cfg: dict) -> dict:
         "url": os.environ.get("WEBHOOK_URL") or wh.get("url", ""),
         "port": int(os.environ.get("PORT") or wh.get("port", 8080)),
         "secret": os.environ.get("WEBHOOK_SECRET") or wh.get("secret", ""),
-        "schedule_hour": int(os.environ["SCHEDULE_HOUR"]) if os.environ.get("SCHEDULE_HOUR") is not None else (int(wh["schedule_hour"]) if "schedule_hour" in wh else None),
-        "schedule_minute": int(os.environ["SCHEDULE_MINUTE"]) if os.environ.get("SCHEDULE_MINUTE") is not None else (int(wh["schedule_minute"]) if "schedule_minute" in wh else None),
+        "schedule_hour": int(os.environ["SCHEDULE_HOUR"]) if os.environ.get("SCHEDULE_HOUR") is not None else (int(wh["schedule_hour"]) if wh.get("schedule_hour") is not None else None),
+        "schedule_minute": int(os.environ["SCHEDULE_MINUTE"]) if os.environ.get("SCHEDULE_MINUTE") is not None else (int(wh["schedule_minute"]) if wh.get("schedule_minute") is not None else None),
+        "schedule_timezone": os.environ.get("SCHEDULE_TIMEZONE") or wh.get("schedule_timezone") or "UTC",
     }
 
 
@@ -213,11 +214,13 @@ async def start_webhook_server(cfg: dict):
                 args=[cfg],
                 hour=settings["schedule_hour"],
                 minute=settings["schedule_minute"] or 0,
+                timezone=settings["schedule_timezone"],
             )
             scheduler.start()
             log.info(
                 f"Scheduler started — daily reports at "
-                f"{settings['schedule_hour']:02d}:{(settings['schedule_minute'] or 0):02d}"
+                f"{settings['schedule_hour']:02d}:{(settings['schedule_minute'] or 0):02d} "
+                f"({settings['schedule_timezone']})"
             )
         else:
             log.info("Scheduler disabled — SCHEDULE_HOUR not set. Use /run or POST /trigger to send reports.")
