@@ -45,14 +45,14 @@ from src.telegram_sender import send_message
 
 
 # ── Process One Account ────────────────────────────────────────────────────────
-async def process_account(account_cfg: dict, global_cfg: dict, test_mode: bool = False):
+async def process_account(account_cfg: dict, global_cfg: dict, test_mode: bool = False, override_chat_ids: list[str] | None = None):
     name = account_cfg["name"]
     log.info(f"\n{'='*50}")
     log.info(f"Processing account: {name}")
     log.info(f"{'='*50}")
 
     bot_token = global_cfg["telegram"]["bot_token"]
-    chat_ids = resolve_chat_ids(account_cfg, global_cfg)
+    chat_ids = override_chat_ids if override_chat_ids is not None else resolve_chat_ids(account_cfg, global_cfg)
 
     if not chat_ids:
         log.error(f"[{name}] No telegram chat_id configured — skipping")
@@ -87,8 +87,12 @@ async def process_account(account_cfg: dict, global_cfg: dict, test_mode: bool =
 
 
 # ── Run All Accounts ───────────────────────────────────────────────────────────
-async def run_all_accounts(cfg: dict, filter_name: str = None):
-    """Run reports for all accounts (or one filtered by name)."""
+async def run_all_accounts(cfg: dict, filter_name: str | None = None):
+    """Run reports for all accounts (or one filtered by name).
+
+    Used by the scheduler and POST /trigger — sends each account's report to
+    ALL configured chat IDs for that account.
+    """
     accounts = cfg["accounts"]
     if filter_name:
         accounts = [a for a in accounts if filter_name.lower() in a["name"].lower()]
@@ -99,6 +103,28 @@ async def run_all_accounts(cfg: dict, filter_name: str = None):
     for account in accounts:
         await process_account(account, cfg)
     log.info("All accounts processed.")
+
+
+async def run_accounts_for_chat(cfg: dict, requester_chat_id: str, filter_name: str | None = None):
+    """Run reports triggered by a manual /run command from a specific chat.
+
+    Only accounts that have requester_chat_id in their configured chat_ids are
+    processed, and the report is sent exclusively back to requester_chat_id.
+    """
+    accounts = cfg["accounts"]
+    if filter_name:
+        accounts = [a for a in accounts if filter_name.lower() in a["name"].lower()]
+
+    relevant = [a for a in accounts if requester_chat_id in resolve_chat_ids(a, cfg)]
+
+    if not relevant:
+        log.warning(f"[/run] No accounts found for chat_id={requester_chat_id}")
+        return
+
+    log.info(f"[/run] Running {len(relevant)} account(s) for chat_id={requester_chat_id}")
+    for account in relevant:
+        await process_account(account, cfg, override_chat_ids=[requester_chat_id])
+    log.info(f"[/run] Done for chat_id={requester_chat_id}")
 
 
 # ── Webhook Server ─────────────────────────────────────────────────────────────
@@ -164,11 +190,11 @@ async def start_webhook_server(cfg: dict):
             if text.startswith("/run"):
                 parts = text.split(maxsplit=1)
                 fname = parts[1] if len(parts) > 1 else None
-                asyncio.create_task(run_all_accounts(cfg, fname))
+                asyncio.create_task(run_accounts_for_chat(cfg, chat_id, fname))
                 reply = (
                     f"🚀 Running report for *{fname}*..."
                     if fname
-                    else "🚀 Running reports for all accounts..."
+                    else "🚀 Running reports for your accounts..."
                 )
                 await bot.send_message(chat_id=chat_id, text=reply, parse_mode="Markdown")
             elif text.startswith("/status"):

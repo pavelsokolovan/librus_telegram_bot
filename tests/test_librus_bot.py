@@ -101,6 +101,21 @@ class TestProcessAccount:
         await process_account({"name": "Kid"}, {"telegram": {"bot_token": "tok"}}, test_mode=True)
         mock_send.assert_not_awaited()
 
+    @pytest.mark.asyncio
+    @patch("librus_bot.send_message", new_callable=AsyncMock)
+    @patch("librus_bot.format_report_fallback", return_value="report")
+    @patch("librus_bot.generate_report_with_claude", return_value=None)
+    @patch("librus_bot.fetch_all", return_value={"account_name": "Kid", "date": "2026-03-25"})
+    async def test_override_chat_ids_bypasses_resolve(self, mock_fetch, mock_claude, mock_fallback, mock_send):
+        """override_chat_ids sends only to the given id, resolve_chat_ids is never consulted."""
+        from librus_bot import process_account
+
+        account = {"name": "Kid"}
+        cfg = {"telegram": {"bot_token": "tok"}}
+        await process_account(account, cfg, override_chat_ids=["override_id"])
+
+        mock_send.assert_awaited_once_with("tok", "override_id", "report", "Kid")
+
 
 class TestRunAllAccounts:
     @pytest.mark.asyncio
@@ -143,6 +158,95 @@ class TestRunAllAccounts:
         await run_all_accounts(cfg)
 
         mock_process.assert_awaited_once_with({"name": "Anna"}, cfg)
+
+
+class TestRunAccountsForChat:
+    """Manual /run — only the requester's accounts, sent only to the requester."""
+
+    @pytest.mark.asyncio
+    @patch("librus_bot.process_account", new_callable=AsyncMock)
+    @patch("librus_bot.resolve_chat_ids", side_effect=lambda a, c: a.get("telegram_chat_ids", []))
+    async def test_runs_only_relevant_accounts(self, mock_resolve, mock_process):
+        from librus_bot import run_accounts_for_chat
+
+        cfg = {
+            "accounts": [
+                {"name": "Anna", "telegram_chat_ids": ["111"]},
+                {"name": "Piotr", "telegram_chat_ids": ["222"]},
+            ]
+        }
+        await run_accounts_for_chat(cfg, "111")
+
+        assert mock_process.await_count == 1
+        assert mock_process.await_args[0][0]["name"] == "Anna"
+
+    @pytest.mark.asyncio
+    @patch("librus_bot.process_account", new_callable=AsyncMock)
+    @patch("librus_bot.resolve_chat_ids", side_effect=lambda a, c: a.get("telegram_chat_ids", []))
+    async def test_sends_only_to_requester(self, mock_resolve, mock_process):
+        from librus_bot import run_accounts_for_chat
+
+        cfg = {
+            "accounts": [
+                {"name": "Anna", "telegram_chat_ids": ["111", "222"]},
+            ]
+        }
+        await run_accounts_for_chat(cfg, "111")
+
+        mock_process.assert_awaited_once_with(
+            {"name": "Anna", "telegram_chat_ids": ["111", "222"]},
+            cfg,
+            override_chat_ids=["111"],
+        )
+
+    @pytest.mark.asyncio
+    @patch("librus_bot.process_account", new_callable=AsyncMock)
+    @patch("librus_bot.resolve_chat_ids", side_effect=lambda a, c: a.get("telegram_chat_ids", []))
+    async def test_no_matching_accounts_skips(self, mock_resolve, mock_process):
+        from librus_bot import run_accounts_for_chat
+
+        cfg = {"accounts": [{"name": "Anna", "telegram_chat_ids": ["222"]}]}
+        await run_accounts_for_chat(cfg, "111")
+
+        mock_process.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    @patch("librus_bot.process_account", new_callable=AsyncMock)
+    @patch("librus_bot.resolve_chat_ids", side_effect=lambda a, c: a.get("telegram_chat_ids", []))
+    async def test_filter_name_applied(self, mock_resolve, mock_process):
+        from librus_bot import run_accounts_for_chat
+
+        cfg = {
+            "accounts": [
+                {"name": "Anna", "telegram_chat_ids": ["111"]},
+                {"name": "Piotr", "telegram_chat_ids": ["111"]},
+            ]
+        }
+        await run_accounts_for_chat(cfg, "111", filter_name="anna")
+
+        assert mock_process.await_count == 1
+        assert mock_process.await_args[0][0]["name"] == "Anna"
+
+    @pytest.mark.asyncio
+    @patch("librus_bot.process_account", new_callable=AsyncMock)
+    @patch("librus_bot.resolve_chat_ids", side_effect=lambda a, c: a.get("telegram_chat_ids", []))
+    async def test_multiple_relevant_accounts(self, mock_resolve, mock_process):
+        """A requester in multiple accounts gets all their reports."""
+        from librus_bot import run_accounts_for_chat
+
+        cfg = {
+            "accounts": [
+                {"name": "Anna", "telegram_chat_ids": ["111"]},
+                {"name": "Piotr", "telegram_chat_ids": ["111"]},
+                {"name": "Other", "telegram_chat_ids": ["999"]},
+            ]
+        }
+        await run_accounts_for_chat(cfg, "111")
+
+        assert mock_process.await_count == 2
+        names = [call.args[0]["name"] for call in mock_process.await_args_list]
+        assert "Anna" in names
+        assert "Piotr" in names
 
 
 class TestGetServerSettings:

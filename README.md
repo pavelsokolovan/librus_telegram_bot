@@ -319,10 +319,12 @@ This is the recommended mode for always-on hosting on platforms like **Railway, 
 
 | Command | Description |
 |---------|-------------|
-| `/run` | Send reports for all accounts now |
-| `/run Anna` | Send report for one account (by name) |
+| `/run` | Send reports for **your** accounts now — only accounts linked to your chat ID, reply goes only to you |
+| `/run Anna` | Same, but filtered to one account by name |
 | `/status` | Show bot status and configured accounts |
 | `/help` | Show available commands |
+
+> 💡 Scheduled (timer) reports are unaffected — they still broadcast each account's report to all configured chat IDs for that account.
 
 ---
 
