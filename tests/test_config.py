@@ -8,18 +8,21 @@ from pathlib import Path
 # ── load_config ────────────────────────────────────────────────────────────────
 
 class TestLoadConfig:
+    # Account entry now requires 'id'. Credentials can live fully in config.
     MINIMAL_CFG = {
-        "accounts": [{"name": "Test", "username": "u", "password": "p", "telegram_chat_ids": ["123"]}],
+        "accounts": [{"id": "1", "name": "Test", "username": "u", "password": "p", "telegram_chat_ids": ["123"]}],
         "telegram": {"bot_token": "tok123"},
     }
 
     # All env keys that load_config reads — cleared for every test to prevent
     # real .env values leaking into mocked runs.
+    # Suffixes 1-3 are blanked so _discover_env_account_ids() finds nothing by default.
     _CLEAN_ENV = {
-        "ACCOUNT_NAME1": "", "ACCOUNT_NAME2": "",
+        "ACCOUNT_NAME1": "", "ACCOUNT_NAME2": "", "ACCOUNT_NAME3": "",
         "LIBRUS_USERNAME1": "", "LIBRUS_PASSWORD1": "",
         "LIBRUS_USERNAME2": "", "LIBRUS_PASSWORD2": "",
-        "TELEGRAM_CHAT_IDS1": "", "TELEGRAM_CHAT_IDS2": "",
+        "LIBRUS_USERNAME3": "", "LIBRUS_PASSWORD3": "",
+        "TELEGRAM_CHAT_IDS1": "", "TELEGRAM_CHAT_IDS2": "", "TELEGRAM_CHAT_IDS3": "",
         "TELEGRAM_BOT_TOKEN": "",
         "CLAUDE_API_KEY": "",
     }
@@ -85,9 +88,78 @@ class TestLoadConfig:
         result = self._run(cfg, {"CLAUDE_API_KEY": "from-env"})
         assert result["claude"]["api_key"] == "from-env"
 
-    def test_exits_when_no_accounts(self):
+    def test_exits_when_no_valid_accounts(self):
+        """Empty config accounts + no env vars → no valid accounts → sys.exit."""
         with pytest.raises(SystemExit):
             self._run({"accounts": [], "telegram": {"bot_token": "t"}})
+
+    # ── new behaviour: env-discovery ──────────────────────────────────────────
+
+    def test_env_only_account_discovered(self):
+        """Account defined purely via env vars; no config entry needed."""
+        cfg = {"accounts": [], "telegram": {"bot_token": "tok"}}
+        result = self._run(cfg, env_vars={
+            "LIBRUS_USERNAME1": "u",
+            "LIBRUS_PASSWORD1": "p",
+            "TELEGRAM_CHAT_IDS1": "123",
+        })
+        assert len(result["accounts"]) == 1
+        assert result["accounts"][0]["username"] == "u"
+        assert result["accounts"][0]["id"] == "1"
+
+    def test_config_and_env_merged(self):
+        """Config entry provides per-account settings; env provides credentials."""
+        cfg = {
+            "accounts": [{"id": "1", "grades_new_days": 7}],
+            "telegram": {"bot_token": "tok"},
+        }
+        result = self._run(cfg, env_vars={
+            "LIBRUS_USERNAME1": "u",
+            "LIBRUS_PASSWORD1": "p",
+            "TELEGRAM_CHAT_IDS1": "123",
+        })
+        account = result["accounts"][0]
+        assert account["username"] == "u"
+        assert account["grades_new_days"] == 7
+
+    def test_incomplete_env_account_skipped(self):
+        """Account with missing password is skipped; app exits when no valid accounts."""
+        cfg = {"accounts": [], "telegram": {"bot_token": "tok"}}
+        with pytest.raises(SystemExit):
+            self._run(cfg, env_vars={"LIBRUS_USERNAME1": "u"})  # no password
+
+    def test_invalid_account_does_not_block_valid_ones(self):
+        """One incomplete account is skipped; valid accounts still run."""
+        cfg = {"accounts": [], "telegram": {"bot_token": "tok"}}
+        result = self._run(cfg, env_vars={
+            "LIBRUS_USERNAME1": "u1",
+            "LIBRUS_PASSWORD1": "p1",
+            "TELEGRAM_CHAT_IDS1": "111",
+            "LIBRUS_USERNAME2": "u2",  # LIBRUS_PASSWORD2 stays blank → skipped
+        })
+        assert len(result["accounts"]) == 1
+        assert result["accounts"][0]["username"] == "u1"
+
+    def test_config_account_without_id_skipped(self):
+        """Config entry missing 'id' is skipped; app exits when no valid accounts remain."""
+        cfg = {
+            "accounts": [{"name": "X", "username": "u", "password": "p", "telegram_chat_ids": ["1"]}],
+            "telegram": {"bot_token": "tok"},
+        }
+        with pytest.raises(SystemExit):
+            self._run(cfg)
+
+    def test_multiple_env_accounts_discovered(self):
+        """Multiple accounts discovered and sorted by ID."""
+        cfg = {"accounts": [], "telegram": {"bot_token": "tok"}}
+        result = self._run(cfg, env_vars={
+            "LIBRUS_USERNAME1": "u1", "LIBRUS_PASSWORD1": "p1", "TELEGRAM_CHAT_IDS1": "111",
+            "LIBRUS_USERNAME2": "u2", "LIBRUS_PASSWORD2": "p2", "TELEGRAM_CHAT_IDS2": "222",
+        })
+        assert len(result["accounts"]) == 2
+        usernames = [a["username"] for a in result["accounts"]]
+        assert "u1" in usernames
+        assert "u2" in usernames
 
     def test_exits_when_no_bot_token(self):
         cfg = {"accounts": [{"name": "X", "username": "u", "password": "p", "telegram_chat_ids": ["1"]}], "telegram": {}}

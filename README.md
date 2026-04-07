@@ -120,28 +120,49 @@ Open `config.json` in Notepad or VS Code. Credentials are no longer stored here.
 
 ### 4a. Librus Accounts
 
-The accounts array in `config.json` controls **how many accounts** exist and their settings. All personal values are loaded from `.env` — leave the credential fields empty in `config.json`.
+Accounts are **auto-discovered from env vars** — no placeholders needed in `config.json`.
+
+**To add an account**, set these vars in `.env` (or in your hosting platform's secrets). Replace `1` with any numeric ID:
+
+```env
+LIBRUS_USERNAME1=your_librus_login
+LIBRUS_PASSWORD1=your_librus_password
+TELEGRAM_CHAT_IDS1=987654321
+ACCOUNT_NAME1=Anna                  # optional — used as display name in reports
+```
+
+For a second account use suffix `2`, for a third use `3`, and so on:
+
+```env
+LIBRUS_USERNAME2=other_login
+LIBRUS_PASSWORD2=other_password
+TELEGRAM_CHAT_IDS2=123456789
+```
+
+The bot discovers every `LIBRUS_USERNAME{id}` env var automatically and processes each matching account.
+
+**Incomplete accounts are skipped with a warning** — if `LIBRUS_PASSWORD2` is missing the bot still runs for all other valid accounts and logs a warning for account `2`.
+
+**Optional — per-account config overrides:** only add an `accounts` entry in `config.json` when you need to override `grades_new_days` or `report_prompt` for a specific account. The `id` must match the env var suffix:
 
 ```json
 "accounts": [
   {
-    "name": "",
-    "username": "",
-    "password": "",
-    "telegram_chat_ids": [],
-    "grades_new_days": 1
+    "id": "1",
+    "grades_new_days": 7,
+    "report_prompt": "Custom AI prompt for this account..."
   }
 ]
 ```
 
-> Values are matched by position: the 1st account block uses `ACCOUNT_NAME1`, `LIBRUS_USERNAME1`, `LIBRUS_PASSWORD1`, `TELEGRAM_CHAT_IDS1` from `.env`; the 2nd block uses the `2` variants, and so on.
+> You can also configure accounts fully inside `config.json` (setting `username`, `password`, `telegram_chat_ids` directly) if you prefer not to use env vars — but **never commit credentials to git**.
 
 | Field | Source | Description |
 |-------|--------|-------------|
-| `name` | `.env` → `ACCOUNT_NAME1` | Display name used in reports |
 | `username` | `.env` → `LIBRUS_USERNAME1` | Librus login |
 | `password` | `.env` → `LIBRUS_PASSWORD1` | Librus password |
 | `telegram_chat_ids` | `.env` → `TELEGRAM_CHAT_IDS1` | Telegram chat ID(s) to send the report to |
+| `name` | `.env` → `ACCOUNT_NAME1` | Display name used in reports *(optional)* |
 | `grades_new_days` | `config.json` | How many days back to look for new grades (`1` = today only) |
 | `report_prompt` | `config.json` | *(optional)* Custom AI prompt for this account |
 
@@ -273,6 +294,11 @@ This is the recommended mode for always-on hosting on platforms like **Railway, 
    LIBRUS_USERNAME1=...
    LIBRUS_PASSWORD1=...
    TELEGRAM_CHAT_IDS1=...
+   # Second account — just add vars with suffix 2; no config.json changes needed:
+   # ACCOUNT_NAME2=...
+   # LIBRUS_USERNAME2=...
+   # LIBRUS_PASSWORD2=...
+   # TELEGRAM_CHAT_IDS2=...
    ```
 
 4. Railway will use the `Procfile` (`web: python librus_bot.py`) to start the bot automatically.

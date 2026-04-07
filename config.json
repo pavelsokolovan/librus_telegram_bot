@@ -1,31 +1,14 @@
 {
   "_readme": "Librus Telegram Bot — Configuration File. Copy this to config.json and fill in your values.",
 
-  "accounts": [
-    {
-      "_comment": "=== ACCOUNT 1 ===",
-      "_comment_creds": "All personal values loaded from .env: ACCOUNT_NAME1, LIBRUS_USERNAME1, LIBRUS_PASSWORD1, TELEGRAM_CHAT_IDS1",
-      "name": "",
-      "username": "",
-      "password": "",
-      "telegram_chat_ids": [],
-
-      "_comment_prompt": "Optional: custom AI prompt for THIS account. Overrides global report_prompt.",
-      "report_prompt": "",
-      "grades_new_days": 1
-    },
-    {
-      "_comment": "=== ACCOUNT 2 ===",
-      "_comment_creds": "All personal values loaded from .env: ACCOUNT_NAME2, LIBRUS_USERNAME2, LIBRUS_PASSWORD2, TELEGRAM_CHAT_IDS2",
-      "name": "",
-      "username": "",
-      "password": "",
-      "telegram_chat_ids": [],
-
-      "report_prompt": "",
-      "grades_new_days": 1
-    }
-  ],
+  "_accounts_readme": "Accounts are auto-discovered from env vars — no placeholders needed here. Set LIBRUS_USERNAME1, LIBRUS_PASSWORD1, TELEGRAM_CHAT_IDS1 (and ACCOUNT_NAME1 optionally) in .env or on your hosting platform. For a second account use suffix 2, for a third use 3, etc.",
+  "_accounts_readme2": "Add entries below ONLY to override per-account settings (grades_new_days, report_prompt). Each entry must have an 'id' that matches the env var suffix. Credentials can also be set fully inline here when not using env vars.",
+  "_accounts_example": {
+    "id": "1",
+    "grades_new_days": 7,
+    "report_prompt": "Custom AI prompt for this account..."
+  },
+  "accounts": [],
 	
   "telegram": {
     "_comment": "bot_token is loaded from .env (TELEGRAM_BOT_TOKEN). Fallback: set it here.",
