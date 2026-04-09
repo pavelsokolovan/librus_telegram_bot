@@ -233,7 +233,7 @@ async def start_webhook_server(cfg: dict):
         else:
             log.warning("WEBHOOK_URL not set — Telegram webhook NOT registered. Bot won't receive /run commands.")
 
-        if settings["schedule_hour"] is not None:
+        if settings["schedule_hour"] is not None and os.environ.get("SCHEDULER_ENABLED", "true").lower() != "false":
             scheduler.add_job(
                 run_all_accounts,
                 "cron",
@@ -249,7 +249,8 @@ async def start_webhook_server(cfg: dict):
                 f"({settings['schedule_timezone']})"
             )
         else:
-            log.info("Scheduler disabled — SCHEDULE_HOUR not set. Use /run or POST /trigger to send reports.")
+            reason = "SCHEDULER_ENABLED=false" if os.environ.get("SCHEDULER_ENABLED", "true").lower() == "false" else "SCHEDULE_HOUR not set"
+            log.info(f"Scheduler disabled ({reason}). Use /run or POST /trigger to send reports.")
 
     async def on_cleanup(app: web.Application):
         scheduler.shutdown(wait=False)
