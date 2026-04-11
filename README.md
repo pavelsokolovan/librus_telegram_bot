@@ -104,6 +104,7 @@ TELEGRAM_CHAT_IDS2=987654321
 # SCHEDULE_HOUR=7
 # SCHEDULE_MINUTE=0
 # SCHEDULE_TIMEZONE=Europe/Warsaw
+# SCHEDULE_DAYS=weekdays          # all | weekdays | weekends | mon,wed,fri | etc. (default: all)
 ```
 
 > 💡 **Getting your Telegram Chat ID:** Message **@userinfobot** on Telegram — it replies with your numeric ID.
@@ -189,6 +190,17 @@ When running in server mode, add the following to `config.json` → `"webhook"` 
 | `schedule_hour` | `SCHEDULE_HOUR` | *(none — scheduler disabled)* | Hour for the daily report (0–23); omit to disable scheduled reports |
 | `schedule_minute` | `SCHEDULE_MINUTE` | `0` (when hour is set) | Minute for the daily report (0–59) |
 | `schedule_timezone` | `SCHEDULE_TIMEZONE` | `Europe/Warsaw` | Timezone for the scheduled report; IANA name (e.g. `Europe/London`, `UTC`) |
+| `schedule_days` | `SCHEDULE_DAYS` | *(not set — every day)* | Days to run the scheduled report — see values below |
+
+**`SCHEDULE_DAYS` values:**
+
+| Value | Days |
+|-------|------|
+| *(not set)* or `all` | Every day (default) |
+| `weekdays` or `mon-fri` | Monday – Friday |
+| `weekends` or `weekend` | Saturday & Sunday |
+| `mon,wed,fri` | Specific days (comma-separated) |
+| `mon-thu` | Day range (APScheduler syntax) |
 
 ### 4d. Report Prompt (optional but recommended)
 
@@ -273,7 +285,7 @@ This is the recommended mode for always-on hosting on platforms like **Railway, 
 
 1. The bot starts a web server on `PORT` (default: 8080).
 2. On startup it registers your `WEBHOOK_URL/webhook` with Telegram.
-3. If `SCHEDULE_HOUR` is set, APScheduler sends the daily report at `SCHEDULE_HOUR:SCHEDULE_MINUTE` in `SCHEDULE_TIMEZONE` (default: `Europe/Warsaw`). If not set, scheduled reports are disabled.
+3. If `SCHEDULE_HOUR` is set, APScheduler sends the daily report at `SCHEDULE_HOUR:SCHEDULE_MINUTE` in `SCHEDULE_TIMEZONE` (default: `Europe/Warsaw`). `SCHEDULE_DAYS` controls which days of the week reports are sent (default: every day). If `SCHEDULE_HOUR` is not set, scheduled reports are disabled.
 4. You can always trigger reports on demand by messaging the bot or calling `POST /trigger`.
 
 ### Deploy to Railway (example)
@@ -290,6 +302,7 @@ This is the recommended mode for always-on hosting on platforms like **Railway, 
    # SCHEDULE_HOUR=7
    # SCHEDULE_MINUTE=0
    # SCHEDULE_TIMEZONE=Europe/Warsaw
+   # SCHEDULE_DAYS=weekdays        # all | weekdays | weekends | mon,wed,fri | etc.
    ACCOUNT_NAME1=...
    LIBRUS_USERNAME1=...
    LIBRUS_PASSWORD1=...

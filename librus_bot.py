@@ -16,6 +16,8 @@ Webhook server environment variables (.env):
     WEBHOOK_SECRET   secret token used to validate incoming Telegram updates
     SCHEDULE_HOUR    hour for the daily report (optional — omit to disable scheduled reports)
     SCHEDULE_MINUTE  minute for the daily report (optional, default: 0 when SCHEDULE_HOUR is set)
+    SCHEDULE_DAYS    which days to run the report (optional, default: all)
+                     Examples: all | weekdays | weekends | mon-fri | sat,sun | mon,wed,fri
 """
 
 import asyncio
@@ -127,6 +129,28 @@ async def run_accounts_for_chat(cfg: dict, requester_chat_id: str, filter_name: 
     log.info(f"[/run] Done for chat_id={requester_chat_id}")
 
 
+# ── Schedule Days Helper ──────────────────────────────────────────────────────
+def _parse_schedule_days(value: str | None) -> str | None:
+    """Normalise SCHEDULE_DAYS to an APScheduler day_of_week string (or None = every day).
+
+    Accepted aliases:
+        all, *           → None  (every day, no restriction)
+        weekdays         → mon-fri
+        weekends         → sat,sun
+        <anything else>  → passed through verbatim (APScheduler syntax: mon,wed,fri / mon-thu)
+    """
+    if not value:
+        return None
+    v = value.strip().lower()
+    if v in ("all", "*"):
+        return None
+    if v in ("weekdays", "mon-fri"):
+        return "mon-fri"
+    if v in ("weekends", "weekend", "sat-sun"):
+        return "sat,sun"
+    return v  # custom expression: mon,wed,fri | mon-thu | etc.
+
+
 # ── Webhook Server ─────────────────────────────────────────────────────────────
 def _get_server_settings(cfg: dict) -> dict:
     """Resolve server settings from env vars with config.json fallbacks."""
@@ -138,6 +162,9 @@ def _get_server_settings(cfg: dict) -> dict:
         "schedule_hour": int(os.environ["SCHEDULE_HOUR"]) if os.environ.get("SCHEDULE_HOUR") is not None else (int(wh["schedule_hour"]) if wh.get("schedule_hour") is not None else None),
         "schedule_minute": int(os.environ["SCHEDULE_MINUTE"]) if os.environ.get("SCHEDULE_MINUTE") is not None else (int(wh["schedule_minute"]) if wh.get("schedule_minute") is not None else None),
         "schedule_timezone": os.environ.get("SCHEDULE_TIMEZONE") or wh.get("schedule_timezone") or "UTC",
+        "schedule_days": _parse_schedule_days(
+            os.environ.get("SCHEDULE_DAYS") or wh.get("schedule_days")
+        ),
     }
 
 
@@ -234,19 +261,20 @@ async def start_webhook_server(cfg: dict):
             log.warning("WEBHOOK_URL not set — Telegram webhook NOT registered. Bot won't receive /run commands.")
 
         if settings["schedule_hour"] is not None and os.environ.get("SCHEDULER_ENABLED", "true").lower() != "false":
-            scheduler.add_job(
-                run_all_accounts,
-                "cron",
-                args=[cfg],
-                hour=settings["schedule_hour"],
-                minute=settings["schedule_minute"] or 0,
-                timezone=settings["schedule_timezone"],
-            )
+            cron_kwargs: dict = {
+                "hour": settings["schedule_hour"],
+                "minute": settings["schedule_minute"] or 0,
+                "timezone": settings["schedule_timezone"],
+            }
+            if settings["schedule_days"] is not None:
+                cron_kwargs["day_of_week"] = settings["schedule_days"]
+            scheduler.add_job(run_all_accounts, "cron", args=[cfg], **cron_kwargs)
             scheduler.start()
+            days_label = settings["schedule_days"] or "every day"
             log.info(
-                f"Scheduler started — daily reports at "
+                f"Scheduler started — reports at "
                 f"{settings['schedule_hour']:02d}:{(settings['schedule_minute'] or 0):02d} "
-                f"({settings['schedule_timezone']})"
+                f"({settings['schedule_timezone']}) on {days_label}"
             )
         else:
             reason = "SCHEDULER_ENABLED=false" if os.environ.get("SCHEDULER_ENABLED", "true").lower() == "false" else "SCHEDULE_HOUR not set"
