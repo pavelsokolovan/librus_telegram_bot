@@ -158,12 +158,8 @@ def fetch_schedule(client, name: str, today: date) -> dict:
     from librus_apix.schedule import get_schedule
 
     try:
-        days_to_friday = 4 - today.weekday()
-        if days_to_friday < 0:
-            log.info(f"[{name}]  schedule: weekend, no remaining school days this week")
-            return {"schedule_events": []}
-
-        end_of_week = today + timedelta(days=days_to_friday)
+        weekday = today.weekday()
+        end_of_week = today + timedelta(days=11 - weekday)  # always next week's Friday
 
         months_to_fetch: set = set()
         cursor = today
@@ -190,7 +186,7 @@ def fetch_schedule(client, name: str, today: date) -> dict:
                         })
 
         events.sort(key=lambda x: (x["date"], str(x["number"])))
-        log.info(f"[{name}]  schedule events (today–end of week): {len(events)}")
+        log.info(f"[{name}]  schedule events (today–{end_of_week}): {len(events)}")
         return {"schedule_events": events}
 
     except Exception as e:

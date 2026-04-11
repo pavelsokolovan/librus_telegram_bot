@@ -200,42 +200,79 @@ class TestFetchSchedule:
         return SimpleNamespace(subject=subject, title=title, number=number, data=data or {})
 
     @patch("librus_apix.schedule.get_schedule")
-    def test_returns_events_this_week(self, mock_get):
-        # Wednesday March 25, 2026 — Friday is March 27
+    def test_returns_events_through_next_friday(self, mock_get):
+        # Wednesday March 25, 2026 — next Friday is April 3
         today = date(2026, 3, 25)
+        # same dict returned for any month call; April days 25-28 > April 3 so filtered
         mock_get.return_value = {
             25: [self._event("Matematyka", "Kartkówka")],
             26: [self._event("Fizyka", "Sprawdzian")],
             27: [self._event("Historia", "Zadanie")],
-            28: [self._event("Weekend", "Ignore")],  # Saturday — should be excluded
+            28: [self._event("Weekend", "Included")],  # Saturday in [Mar 25, Apr 3]
         }
         result = fetch_schedule(CLIENT, NAME, today)
+        assert len(result["schedule_events"]) == 4
+        subjects = [e["subject"] for e in result["schedule_events"]]
+        assert "Weekend" in subjects
+
+    @patch("librus_apix.schedule.get_schedule")
+    def test_saturday_fetches_through_next_friday(self, mock_get):
+        # Saturday March 28 — next Friday is April 3 (+6 days)
+        saturday = date(2026, 3, 28)
+
+        def side_effect(client, month, year):
+            if month == "03":
+                return {28: [self._event("Sat", "E0")], 29: [self._event("Sun", "E00")]}
+            return {
+                1: [self._event("Matematyka", "E1")],
+                2: [self._event("Fizyka", "E2")],
+                3: [self._event("Historia", "E3")],  # next Friday — in range
+                4: [self._event("Extra", "E4")],     # Saturday after next — excluded
+            }
+
+        mock_get.side_effect = side_effect
+        result = fetch_schedule(CLIENT, NAME, saturday)
+        assert mock_get.called
+        assert len(result["schedule_events"]) == 5  # Mar 28-29 + Apr 1-3
+        subjects = [e["subject"] for e in result["schedule_events"]]
+        assert "Extra" not in subjects
+
+    @patch("librus_apix.schedule.get_schedule")
+    def test_friday_fetches_through_next_friday(self, mock_get):
+        # Friday March 27 — next Friday is April 3 (+7 days)
+        friday = date(2026, 3, 27)
+
+        def side_effect(client, month, year):
+            if month == "03":
+                return {27: [self._event("Chemia", "Test")]}
+            return {
+                1: [self._event("Mat", "E1")],
+                3: [self._event("Fiz", "E2")],  # next Friday — in range
+                4: [self._event("Sat", "E3")],  # excluded
+            }
+
+        mock_get.side_effect = side_effect
+        result = fetch_schedule(CLIENT, NAME, friday)
         assert len(result["schedule_events"]) == 3
         subjects = [e["subject"] for e in result["schedule_events"]]
-        assert "Weekend" not in subjects
-
-    @patch("librus_apix.schedule.get_schedule")
-    def test_weekend_returns_empty(self, mock_get):
-        saturday = date(2026, 3, 28)
-        result = fetch_schedule(CLIENT, NAME, saturday)
-        assert result == {"schedule_events": []}
-        mock_get.assert_not_called()
-
-    @patch("librus_apix.schedule.get_schedule")
-    def test_friday_returns_single_day(self, mock_get):
-        friday = date(2026, 3, 27)
-        mock_get.return_value = {
-            27: [self._event("Chemia", "Test")],
-        }
-        result = fetch_schedule(CLIENT, NAME, friday)
-        assert len(result["schedule_events"]) == 1
+        assert "Sat" not in subjects
 
     @patch("librus_apix.schedule.get_schedule")
     def test_month_boundary_spanning(self, mock_get):
-        # March 30 is Monday, Friday = April 3
+        # March 30 is Monday — next Friday is April 10 (+11 days)
         monday = date(2026, 3, 30)
         march_data = {30: [self._event("Mon", "E1")], 31: [self._event("Tue", "E2")]}
-        april_data = {1: [self._event("Wed", "E3")], 2: [self._event("Thu", "E4")], 3: [self._event("Fri", "E5")]}
+        april_data = {
+            1:  [self._event("Wed",  "E3")],
+            2:  [self._event("Thu",  "E4")],
+            3:  [self._event("Fri",  "E5")],
+            6:  [self._event("Mon2", "E6")],
+            7:  [self._event("Tue2", "E7")],
+            8:  [self._event("Wed2", "E8")],
+            9:  [self._event("Thu2", "E9")],
+            10: [self._event("Fri2", "E10")],   # next Friday — in range
+            11: [self._event("Sat",  "ignore")], # excluded
+        }
 
         def side_effect(client, month, year):
             if month == "03":
@@ -244,7 +281,9 @@ class TestFetchSchedule:
 
         mock_get.side_effect = side_effect
         result = fetch_schedule(CLIENT, NAME, monday)
-        assert len(result["schedule_events"]) == 5
+        assert len(result["schedule_events"]) == 10  # Mar30-31 + Apr1-3 + Apr6-10
+        subjects = [e["subject"] for e in result["schedule_events"]]
+        assert "Sat" not in subjects
 
     @patch("librus_apix.schedule.get_schedule", side_effect=Exception("err"))
     def test_returns_empty_on_error(self, _):
