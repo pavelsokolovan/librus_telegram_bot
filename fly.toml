@@ -4,7 +4,7 @@
 #
 
 app = 'librus-telegram-bot'
-primary_region = 'ams'
+primary_region = 'lhr'
 
 [build]
 
